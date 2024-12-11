@@ -96,6 +96,8 @@ void writeToFile(const int fd, const char * data)
         
         error(-1, 0, "wrong number of bytes written");
     }
+
+    printf("%zd written successfully!\n", bytesWritten);
 }
 
 // close file descriptor, but check the error output and report it
