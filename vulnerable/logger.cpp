@@ -19,30 +19,27 @@ const uint32_t MAX_BUFFER_SIZE = 4096;
 */
 std::string getInput(const uint32_t maxBufferSize=UINT16_MAX)
 {
-    printf("Enter input (max %u) > ", maxBufferSize);
+    printf("Enter input (max %u)  \n-- ctrl-d to quit --\n> ", maxBufferSize);
     char buffer[maxBufferSize];
-    if(fgets(buffer, sizeof(buffer), stdin) == NULL)
-        error(-1, 0, "fgets error");
+    std::string input = "";
+    
+    // continue to get input including new line characters. So the loop breaks when EOF is reached
+    // therefore, a user will have to enter ctrl-d in order to break out of the command line
+    while(fgets(buffer, sizeof(buffer), stdin) != NULL)
+    {
+        printf("> ");
+        input += buffer;
+    }
+    
+    // remove newline at the very end of the string while also allowing the input to be a single newline character
+    if(!input.empty() && input[input.size()-1] == '\n' && input.size() > 1)
+    {
+        input.erase(input.size()-1);
+    }
+    
     printf("\n");
 
-    /// = = = = =  BUFFER OVERFLOW protection for obtaining user input
-
-    // obtain pointer to the first occurance of newline character
-    char * newline = strchr(buffer, '\n');
-    if(newline)
-    {
-        // replace the newline character with a null terminator
-        *newline = '\0';
-    }
-    else
-    {
-        // clear each character from stdin one by one
-        int ch;
-        while((ch = getchar()) != '\n' && ch != EOF);
-    }
-    /// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =  
-    
-    return std::string(buffer);
+    return input;
 }
 
 // creates a file, writes a 32-bit value of 0 to the value and closes it
@@ -70,7 +67,16 @@ int openOrCreateFile(const char * fileName)
         // check if file exists or not, if it exists then an error occured
         if(access(fileName, F_OK) == 0)
         {
-            error(-1, 0, "could not open file");
+            if(access(fileName, R_OK) !=0)
+            {
+                error(-1, 0, "file is not readable");
+            }
+            if(access(fileName, W_OK) !=0)
+            {
+                error(-1, 0, "file is not writable");
+            }
+
+            error(-1, 0, "error occured while trying to open file");
         }
 
         // file doesn't exist, create it
@@ -122,7 +128,8 @@ int main(int arc, char *argv[])
     {
         error(-1, 0, "userInput malloc");
     }
-
+    
+    // order of mallocs is important, but an overflow on the first malloc will overwrite data in the second malloc
     fileName = (char *) malloc(sizeof(char) * MAX_BUFFER_SIZE);
     if(!fileName)
     {
@@ -136,8 +143,14 @@ int main(int arc, char *argv[])
     // format date into fileName
     std::strftime(fileName, sizeof(char) * MAX_BUFFER_SIZE, "LOG_FILE_%Y-%m-%d_%H:%M:%S.log", t);
     // fileName = std::ctime(&now);
-
-    strcpy(logData, getInput().c_str()); 
+    
+    // make sure there is actually input
+    std::string data = getInput();
+    if(data.size() == 0)
+    {
+        error(-1, 0, "no data recieved");
+    }
+    strcpy(logData, data.c_str()); 
     
 
     int fd = openOrCreateFile(fileName);
